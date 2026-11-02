@@ -72,7 +72,7 @@ app.get("/books", async (req, res) => {
   res.send(await cursor.toArray());
 });
 
-// 2. GET /books/:id
+// 2.GET /books/:id
 app.get("/books/:id", async (req, res) => {
   const { id } = req.params;
   if (!isValidId(id)) return res.status(400).send({ message: "Invalid book id." });
