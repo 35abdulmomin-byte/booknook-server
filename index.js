@@ -48,7 +48,7 @@ async function verifyToken(req, res, next) {
   }
 }
 
-// ---------- helpers ----------
+
 const isValidId = (id) => /^[a-f\d]{24}$/i.test(String(id));
 const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
