@@ -28,7 +28,7 @@ const borrowsCol = db.collection("borrows");
 await borrowsCol.createIndex({ userEmail: 1, bookId: 1 }, { unique: true });
 console.log("MongoDB connected");
 
-// ---------- JWT verify (BetterAuth er token) ----------
+
 const JWKS = createRemoteJWKSet(new URL(`${AUTH_URL}/api/auth/jwks`));
 
 async function verifyToken(req, res, next) {
