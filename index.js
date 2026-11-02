@@ -5,7 +5,6 @@ import cors from "cors";
 import { MongoClient, ObjectId } from "mongodb";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
-// tomar network e SRV DNS problem chhilo, tai eta rakhlam
 dns.setServers(["8.8.8.8", "1.1.1.1"]);
 
 const app = express();
