@@ -9,10 +9,12 @@ dns.setServers(["8.8.8.8", "1.1.1.1"]);
 
 const app = express();
 const port = process.env.PORT || 5000;
-const AUTH_URL = process.env.AUTH_URL;
+
+// AUTH_URL undefined এড়ানোর জন্য ফলব্যাক দেওয়া হলো
+const AUTH_URL = process.env.AUTH_URL || "https://booknook-inky-seven.vercel.app";
 const CATEGORIES = ["Fiction", "Science", "History", "Kids", "Others"];
 
-// CORS কনফিগারেশন (ফ্রন্টএন্ড ও লোকালহোস্ট থেকে রিকোয়েস্ট এলাউ করার জন্য)
+// CORS কনফিগারেশন
 app.use(
   cors({
     origin: [
@@ -180,7 +182,7 @@ app.post("/borrows", verifyToken, async (req, res) => {
   }
 
   const borrowDate = new Date();
-  const returnDate = new Date(borrowDate.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 din pore
+  const returnDate = new Date(borrowDate.getTime() + 7 * 24 * 60 * 60 * 1000);
 
   const borrow = {
     bookId: book._id,
