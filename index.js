@@ -17,7 +17,7 @@ app.use(
 );
 app.use(express.json());
 
-// ---------- MongoDB ----------
+
 const client = new MongoClient(process.env.MONGODB_URI);
 await client.connect();
 const db = client.db("booknook");
