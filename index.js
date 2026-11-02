@@ -12,11 +12,21 @@ const port = process.env.PORT || 5000;
 const AUTH_URL = process.env.AUTH_URL;
 const CATEGORIES = ["Fiction", "Science", "History", "Kids", "Others"];
 
+// CORS কনফিগারেশন (ফ্রন্টএন্ড ও লোকালহোস্ট থেকে রিকোয়েস্ট এলাউ করার জন্য)
 app.use(
-  cors({ origin: (process.env.CLIENT_URL || "http://localhost:3000").split(",") })
+  cors({
+    origin: [
+      "https://booknook-inky-seven.vercel.app",
+      "http://localhost:3000",
+      ...(process.env.CLIENT_URL ? process.env.CLIENT_URL.split(",") : [])
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
 );
-app.use(express.json());
 
+app.use(express.json());
 
 const client = new MongoClient(process.env.MONGODB_URI);
 await client.connect();
@@ -24,10 +34,8 @@ const db = client.db("booknook");
 const booksCol = db.collection("books");
 const borrowsCol = db.collection("borrows");
 
-
 await borrowsCol.createIndex({ userEmail: 1, bookId: 1 }, { unique: true });
 console.log("MongoDB connected");
-
 
 const JWKS = createRemoteJWKSet(new URL(`${AUTH_URL}/api/auth/jwks`));
 
@@ -48,12 +56,10 @@ async function verifyToken(req, res, next) {
   }
 }
 
-
 const isValidId = (id) => /^[a-f\d]{24}$/i.test(String(id));
 const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 // ---------- BOOKS ----------
-// 1. GET /books (public) : ?limit=6 &category=Fiction &search=text &email=user@mail.com
 app.get("/books", async (req, res) => {
   const { limit, category, search, email } = req.query;
   const filter = {};
@@ -65,14 +71,13 @@ app.get("/books", async (req, res) => {
     filter.$or = [{ title: regex }, { author: regex }];
   }
 
-  const cursor = booksCol.find(filter).sort({ createdAt: -1 }); // newest first
+  const cursor = booksCol.find(filter).sort({ createdAt: -1 });
   const n = parseInt(String(limit));
   if (n > 0) cursor.limit(n);
 
   res.send(await cursor.toArray());
 });
 
-// 2.GET /books/:id
 app.get("/books/:id", async (req, res) => {
   const { id } = req.params;
   if (!isValidId(id)) return res.status(400).send({ message: "Invalid book id." });
@@ -81,7 +86,7 @@ app.get("/books/:id", async (req, res) => {
   if (!book) return res.status(404).send({ message: "Book not found." });
   res.send(book);
 });
-// 3. POST /books(protected)
+
 app.post("/books", verifyToken, async (req, res) => {
   const { title, author, category, image, description, totalCopies } = req.body;
   const copies = Number(totalCopies);
@@ -100,7 +105,7 @@ app.post("/books", verifyToken, async (req, res) => {
     description: description.trim(),
     totalCopies: copies,
     availableCopies: copies,
-    addedBy: { name: req.user.name, email: req.user.email }, // token theke, frontend theke noy
+    addedBy: { name: req.user.name, email: req.user.email },
     createdAt: new Date(),
   };
 
@@ -108,7 +113,6 @@ app.post("/books", verifyToken, async (req, res) => {
   res.status(201).send({ ...book, _id: result.insertedId });
 });
 
-// 4. PATCH /books/:id (protected, shudhu owner)
 app.patch("/books/:id", verifyToken, async (req, res) => {
   const { id } = req.params;
   if (!isValidId(id)) return res.status(400).send({ message: "Invalid book id." });
@@ -149,7 +153,6 @@ app.patch("/books/:id", verifyToken, async (req, res) => {
   res.send(updated);
 });
 
-// 5. DELETE /books/:id (protected, shudhu owner)
 app.delete("/books/:id", verifyToken, async (req, res) => {
   const { id } = req.params;
   if (!isValidId(id)) return res.status(400).send({ message: "Invalid book id." });
@@ -161,12 +164,11 @@ app.delete("/books/:id", verifyToken, async (req, res) => {
   }
 
   await booksCol.deleteOne({ _id: book._id });
-  await borrowsCol.deleteMany({ bookId: book._id }); // oi boi-er borrow record-o muche jabe
+  await borrowsCol.deleteMany({ bookId: book._id });
   res.send({ message: "Book deleted successfully." });
 });
 
 // ---------- BORROWS ----------
-// 6. POST /borrows (protected)
 app.post("/borrows", verifyToken, async (req, res) => {
   const { bookId } = req.body;
   if (!isValidId(bookId)) return res.status(400).send({ message: "Invalid book id." });
@@ -190,7 +192,6 @@ app.post("/borrows", verifyToken, async (req, res) => {
     returnDate,
   };
 
-  // age borrow save: duplicate hole unique index error dibe (No Double Borrow)
   try {
     const result = await borrowsCol.insertOne(borrow);
     borrow._id = result.insertedId;
@@ -201,7 +202,6 @@ app.post("/borrows", verifyToken, async (req, res) => {
     throw err;
   }
 
-  // tarpor copy 1 kom ($inc), copy 0 hole condition fail korbe
   const updated = await booksCol.findOneAndUpdate(
     { _id: book._id, availableCopies: { $gt: 0 } },
     { $inc: { availableCopies: -1 } }
@@ -214,7 +214,6 @@ app.post("/borrows", verifyToken, async (req, res) => {
   res.status(201).send(borrow);
 });
 
-// 7. GET /borrows (protected, nijer borrow gulo)
 app.get("/borrows", verifyToken, async (req, res) => {
   const list = await borrowsCol
     .find({ userEmail: req.user.email })
@@ -223,7 +222,6 @@ app.get("/borrows", verifyToken, async (req, res) => {
   res.send(list);
 });
 
-// 8. DELETE /borrows/:id (protected, return book)
 app.delete("/borrows/:id", verifyToken, async (req, res) => {
   const { id } = req.params;
   if (!isValidId(id)) return res.status(400).send({ message: "Invalid borrow id." });
