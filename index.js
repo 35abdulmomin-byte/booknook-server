@@ -24,7 +24,7 @@ const db = client.db("booknook");
 const booksCol = db.collection("books");
 const borrowsCol = db.collection("borrows");
 
-// ek user ek boi duibar borrow korte parbe na (database level e guarantee)
+
 await borrowsCol.createIndex({ userEmail: 1, bookId: 1 }, { unique: true });
 console.log("MongoDB connected");
 
