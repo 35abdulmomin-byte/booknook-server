@@ -82,7 +82,7 @@ app.get("/books/:id", async (req, res) => {
   res.send(book);
 });
 
-// 3. POST /books (protected)
+// 3. POST /books(protected)
 app.post("/books", verifyToken, async (req, res) => {
   const { title, author, category, image, description, totalCopies } = req.body;
   const copies = Number(totalCopies);
