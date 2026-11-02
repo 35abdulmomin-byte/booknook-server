@@ -81,12 +81,10 @@ app.get("/books/:id", async (req, res) => {
   if (!book) return res.status(404).send({ message: "Book not found." });
   res.send(book);
 });
-
 // 3. POST /books(protected)
 app.post("/books", verifyToken, async (req, res) => {
   const { title, author, category, image, description, totalCopies } = req.body;
   const copies = Number(totalCopies);
-
   if (
     !title?.trim() || !author?.trim() || !description?.trim() || !image ||
     !CATEGORIES.includes(category) || !Number.isInteger(copies) || copies < 1
