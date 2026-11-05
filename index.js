@@ -10,11 +10,9 @@ dns.setServers(["8.8.8.8", "1.1.1.1"]);
 const app = express();
 const port = process.env.PORT || 5000;
 
-// AUTH_URL undefined এড়ানোর জন্য ফলব্যাক দেওয়া হলো
 const AUTH_URL = process.env.AUTH_URL || "https://booknook-inky-seven.vercel.app";
 const CATEGORIES = ["Fiction", "Science", "History", "Kids", "Others"];
 
-// CORS কনফিগারেশন
 app.use(
   cors({
     origin: [
@@ -143,8 +141,17 @@ app.patch("/books/:id", verifyToken, async (req, res) => {
     if (!Number.isInteger(copies) || copies < 1) {
       return res.status(400).send({ message: "Total copies must be 1 or more." });
     }
+
+    // বর্তমানে যতগুলো কপি ধার নেওয়া আছে, total তার চেয়ে কম করা যাবে না
+    const borrowedNow = book.totalCopies - book.availableCopies;
+    if (copies < borrowedNow) {
+      return res.status(400).send({
+        message: `${borrowedNow} copies are currently borrowed. Total copies cannot be less than that.`,
+      });
+    }
+
     update.totalCopies = copies;
-    update.availableCopies = Math.max(0, book.availableCopies + (copies - book.totalCopies));
+    update.availableCopies = copies - borrowedNow;
   }
 
   const updated = await booksCol.findOneAndUpdate(
@@ -235,7 +242,13 @@ app.delete("/borrows/:id", verifyToken, async (req, res) => {
   }
 
   await borrowsCol.deleteOne({ _id: borrow._id });
-  await booksCol.updateOne({ _id: borrow.bookId }, { $inc: { availableCopies: 1 } });
+
+  // availableCopies কখনো totalCopies-এর বেশি হবে না
+  await booksCol.updateOne(
+    { _id: borrow.bookId, $expr: { $lt: ["$availableCopies", "$totalCopies"] } },
+    { $inc: { availableCopies: 1 } }
+  );
+
   res.send({ message: "Book returned successfully." });
 });
 
